@@ -1,4 +1,4 @@
-# Profile Builder
+t# Profile Builder
 
 AI-powered psychological profile generator that analyzes user onboarding data from Supabase and generates structured personality profiles.
 

@@ -1,5 +1,26 @@
 from supabase_client import supabase
 
+
+def fetch_all_user_ids():
+    response = (
+        supabase
+        .table("profiles")
+        .select("user_id")
+        .execute()
+    )
+
+    rows = response.data or []
+    seen = set()
+    user_ids = []
+
+    for row in rows:
+        user_id = row.get("user_id")
+        if user_id and user_id not in seen:
+            seen.add(user_id)
+            user_ids.append(user_id)
+
+    return user_ids
+
 def fetch_user_onboarding(user_id: str):
 
     response = (
@@ -18,11 +39,17 @@ def fetch_user_onboarding(user_id: str):
             physical_and_attraction
         """)
         .eq("user_id", user_id)
-        .single()# allows us to fetch a single record instead of an array
         .execute()# executes the query and returns the response
     )
 
-    if not response.data:
-        raise Exception("User not found")
+    rows = response.data or []
 
-    return response.data
+    if len(rows) == 0:
+        raise ValueError(f"No onboarding record found in 'profiles' for user_id={user_id}")
+
+    if len(rows) > 1:
+        raise ValueError(
+            f"Expected one onboarding record in 'profiles' for user_id={user_id}, found {len(rows)}"
+        )
+
+    return rows[0]
