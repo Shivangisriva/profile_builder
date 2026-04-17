@@ -21,6 +21,29 @@ def fetch_all_user_ids():
 
     return user_ids
 
+
+def fetch_unprocessed_user_ids(limit: int):
+    response = (
+        supabase
+        .table("profiles")
+        .select("user_id")
+        .is_("ai_profile", "null")
+        .limit(limit)
+        .execute()
+    )
+
+    rows = response.data or []
+    seen = set()
+    user_ids = []
+
+    for row in rows:
+        user_id = row.get("user_id")
+        if user_id and user_id not in seen:
+            seen.add(user_id)
+            user_ids.append(user_id)
+
+    return user_ids
+
 def fetch_user_onboarding(user_id: str):
 
     response = (
@@ -36,7 +59,8 @@ def fetch_user_onboarding(user_id: str):
             lifestyle,
             values_faith_and_culture,
             political_and_social_outlook,
-            physical_and_attraction
+            physical_and_attraction,
+            conversation_transcript
         """)
         .eq("user_id", user_id)
         .execute()# executes the query and returns the response

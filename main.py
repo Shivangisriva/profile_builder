@@ -1,6 +1,6 @@
-import sys
+import argparse
 
-from fetch_user import fetch_all_user_ids, fetch_user_onboarding
+from fetch_user import fetch_all_user_ids, fetch_unprocessed_user_ids, fetch_user_onboarding
 from prepare_payload import build_agent_input
 from agent import build_profile
 from save_profile import save_profile_to_json
@@ -80,8 +80,63 @@ def process_all_users():
     print(f"❌ Failed: {failed_count}")
     print("=" * 50)
 
+
+def process_batch_users(batch_size: int):
+    print(f"📥 Fetching first {batch_size} unprocessed users from Supabase...")
+    user_ids = fetch_unprocessed_user_ids(batch_size)
+
+    if not user_ids:
+        print("⚠️ No unprocessed users found (ai_profile IS NULL)")
+        return
+
+    print(f"✅ Found {len(user_ids)} unprocessed users")
+
+    success_count = 0
+    skipped_count = 0
+    failed_count = 0
+
+    for index, user_id in enumerate(user_ids, start=1):
+        print(f"\n[{index}/{len(user_ids)}] Starting user {user_id}")
+        try:
+            result = process_user(user_id)
+            if result is None:
+                skipped_count += 1
+            else:
+                success_count += 1
+        except Exception as exc:
+            failed_count += 1
+            print(f"❌ Failed for user {user_id}: {exc}")
+
+    print("\n" + "=" * 50)
+    print("RUN SUMMARY")
+    print("=" * 50)
+    print(f"✅ Success: {success_count}")
+    print(f"⚠️ Skipped: {skipped_count}")
+    print(f"❌ Failed: {failed_count}")
+    print("=" * 50)
+
+
+def parse_args():
+    parser = argparse.ArgumentParser(description="Build AI profiles from Supabase onboarding data")
+    parser.add_argument("--user", help="Process a single user_id")
+    parser.add_argument(
+        "--batch",
+        type=int,
+        help="Process first N unprocessed users where ai_profile is NULL",
+    )
+    return parser.parse_args()
+
 if __name__ == "__main__":
-    if len(sys.argv) > 1:
-        process_user(sys.argv[1])
+    args = parse_args()
+
+    if args.user and args.batch is not None:
+        raise SystemExit("Use either --user or --batch, not both.")
+
+    if args.user:
+        process_user(args.user)
+    elif args.batch is not None:
+        if args.batch <= 0:
+            raise SystemExit("--batch must be a positive integer.")
+        process_batch_users(args.batch)
     else:
         process_all_users()
